@@ -37,4 +37,4 @@ To do that, put your script in the relevant `beforeBuildScript` or `afterBuildSc
 
 If you want to change the path to your script file and for example, call an apex class that is about to be deployed
 * Update the attribute `scripts_folder` in `build/build.properties` file with the relevant folder (for exmaple `src/classes/`)
-* Update the relevant attribute `before_deploy_script_name` or `afterBuildScript` in `build/build.properties` file with the class name
+* Update the relevant attribute `before_deploy_script_name` or `afterBuildScript` in `build/build.properties` file with the class name"# Test_Task" 
