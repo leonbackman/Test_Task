@@ -1,0 +1,244 @@
+<project name="deploy" basedir="." xmlns:sf="antlib:com.salesforce" xmlns:ml="org.missinglink.ant.task.http.HttpClientTask">
+    <property file="build.properties" />
+    <loadfile property="beforeBuildScript" srcFile="../${scripts_folder}${before_deploy_script_name}" />
+    <loadfile property="afterBuildScript" srcFile="../${scripts_folder}${after_deploy_script_name}" />
+    <property environment="env" />
+    <!-- Setting default value for username, password and session id properties to empty string
+         so unset values are treated as empty. Without this, ant expressions such as ${sf.username}
+         will be treated literally.
+    -->
+    <condition property="username" value="">
+        <not>
+            <isset property="username" />
+        </not>
+    </condition>
+    <condition property="password" value="">
+        <not>
+            <isset property="password" />
+        </not>
+    </condition>
+    <taskdef resource="com/salesforce/antlib.xml" uri="antlib:com.salesforce"
+             classpath="${ant_salesforce_prefix}ant-salesforce.jar">
+    </taskdef>
+
+    <!-- Download from https://code.google.com/p/missing-link/ -->
+    <taskdef name="http" uri="org.missinglink.ant.task.http.HttpClientTask"
+             classname="org.missinglink.ant.task.http.HttpClientTask"
+             classpath="${ant_salesforce_prefix}ml-ant-http-1.1.3.jar"/>
+
+    <target name="deploy-prod">
+        <echo message="running before deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${prod_url}"><![CDATA[
+            ${beforeBuildScript}
+        ]]></executeAnonymous>
+
+        <echo message="deploy to ${deploy_env}" />
+        <echo message="serverurl = ${prod_url}" />
+        <echo message="username = ${env.sf_username}" />
+        <sf:deploy username="${env.sf_username}"
+                   password="${env.sf_password}${env.sf_token}"
+                   serverurl="${prod_url}"
+                   maxPoll="${sf_maxpoll}"
+                   rollbackOnError="true"
+                   deployRoot="../src"
+                   checkOnly="false"
+                   ignoreWarnings="true"
+                   testlevel="RunLocalTests" />
+
+        <echo message="running after deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${prod_url}"><![CDATA[
+            ${afterBuildScript}
+        ]]></executeAnonymous>
+    </target>
+    <target name="deploy-sandbox">
+        <echo message="running before deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${sandbox_url}"><![CDATA[
+            ${beforeBuildScript}
+        ]]></executeAnonymous>
+
+        <echo message="deploy to ${deploy_env}" />
+        <echo message="serverurl = ${sandbox_url}" />
+        <echo message="username = ${env.sf_username}" />
+        <sf:deploy username="${env.sf_username}"
+                   password="${env.sf_password}${env.sf_token}"
+                   serverurl="${sandbox_url}"
+                   maxPoll="${sf_maxpoll}"
+                   rollbackOnError="true"
+                   deployRoot="../src"
+                   checkOnly="false"
+                   ignoreWarnings="true"
+                   testlevel="RunLocalTests" />
+
+        <echo message="running after deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${sandbox_url}"><![CDATA[
+            ${afterBuildScript}
+        ]]></executeAnonymous>
+    </target>
+    <target name="deploy-sandbox-no-tests">
+        <echo message="running before deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${sandbox_url}"><![CDATA[
+            ${beforeBuildScript}
+        ]]></executeAnonymous>
+
+        <echo message="deploy no tests to ${deploy_env}" />
+        <echo message="serverurl = ${sandbox_url}" />
+        <echo message="username = ${env.sf_username}" />
+        <sf:deploy username="${env.sf_username}"
+                   password="${env.sf_password}${env.sf_token}"
+                   serverurl="${sandbox_url}"
+                   maxPoll="${sf_maxpoll}"
+                   rollbackOnError="true"
+                   deployRoot="../src"
+                   checkOnly="false"
+                   ignoreWarnings="true"
+                   testlevel="NoTestRun" />
+
+        <echo message="running after deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${sandbox_url}"><![CDATA[
+            ${afterBuildScript}
+        ]]></executeAnonymous>
+    </target>
+	<target name="quick-deploy-prod">
+        <echo message="running before deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${prod_url}"><![CDATA[
+            ${beforeBuildScript}
+        ]]></executeAnonymous>
+
+        <echo message="quick deploy to ${deploy_env} with task id ${validated_build_id}" />
+        <echo message="serverurl = ${prod_url}" />
+        <echo message="username = ${env.sf_username}" />
+        <sf:deployRecentValidation username="${env.sf_username}"
+                   password="${env.sf_password}${env.sf_token}"
+                   serverurl="${prod_url}"
+                   recentValidationId="${build_id}" />
+
+        <echo message="running after deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${prod_url}"><![CDATA[
+            ${afterBuildScript}
+        ]]></executeAnonymous>
+	</target>
+	<target name="quick-deploy-sandbox">
+        <echo message="running before deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${sandbox_url}"><![CDATA[
+            ${beforeBuildScript}
+        ]]></executeAnonymous>
+
+        <echo message="quick deploy to ${deploy_env} with task id ${validated_build_id}" />
+        <echo message="serverurl = ${sandbox_url}" />
+        <echo message="username = ${env.sf_username}" />
+        <sf:deployRecentValidation username="${env.sf_username}"
+                   password="${env.sf_password}${env.sf_token}"
+                   serverurl="${sandbox_url}"
+                   recentValidationId="${build_id}" />
+
+        <echo message="running after deploy script" />
+        <executeAnonymous username="${env.sf_username}" password="${env.sf_password}${env.sf_token}" serverurl="${sandbox_url}"><![CDATA[
+            ${afterBuildScript}
+        ]]></executeAnonymous>
+	</target>
+    <target name="validate-prod">
+        <echo message="validate to ${deploy_env}" />
+        <echo message="validate to ${validate_envs}" />
+        <echo message="serverurl = ${prod_url}" />
+        <echo message="username = ${env.sf_username}" />
+        <sf:deploy username="${env.sf_username}"
+                   password="${env.sf_password}${env.sf_token}"
+                   serverurl="${prod_url}"
+                   maxPoll="${sf_maxpoll}"
+                   rollbackOnError="true"
+                   deployRoot="../src"
+                   checkOnly="true"
+                   ignoreWarnings="true"
+                   testlevel="RunLocalTests" />
+    </target>
+    <target name="validate-sandbox">
+        <echo message="validate to ${deploy_env}" />
+        <echo message="validate to ${validate_envs}" />
+        <echo message="serverurl = ${sandbox_url}" />
+        <echo message="username = ${env.sf_username}" />
+        <sf:deploy username="${env.sf_username}"
+                   password="${env.sf_password}${env.sf_token}"
+                   serverurl="${sandbox_url}"
+                   maxPoll="${sf_maxpoll}"
+                   rollbackOnError="true"
+                   deployRoot="../src"
+                   checkOnly="true"
+                   ignoreWarnings="true"
+                   testlevel="RunLocalTests" />
+    </target>
+
+    <macrodef name="executeAnonymous" description="Invoke ExecuteAnonymous using Salesforce Tooling API">
+        <attribute name="username" description="Salesforce user name."/>
+        <attribute name="password" description="Salesforce password."/>
+        <attribute name="serverurl" description="Salesforce endpoint."/>
+        <text name="apexcode"/>
+        <sequential>
+            <!-- Login to populate serverUrl / sessionId / instance -->
+            <login username="@{username}" password="@{password}" serverurl="@{serverurl}" />
+
+            <!-- Execute using HTTP GET -->
+            <ml:http url="${instance}/services/data/v51.0/tooling/executeAnonymous" method="GET" outfile="lib/executeAnonymousResult.json"  statusProperty="loginResponseStatus">
+                <headers>
+                    <header name="Authorization" value="Bearer ${sessionId}"/>
+                </headers>
+                <query>
+                    <parameter name="anonymousBody" value="@{apexcode}"/>
+                </query>
+            </ml:http>
+
+            <!-- Fail on error -->
+            <loadfile property="executeAnonymousResult" srcFile="lib/executeAnonymousResult.json" />
+            <fail message="Execute Anonymous failed: ${executeAnonymousResult}">
+                <condition>
+                    <contains string="${executeAnonymousResult}" substring="&quot;success&quot;:false"/>
+                </condition>
+            </fail>
+
+            <!-- Show output -->
+            <echo message="&#10;executeAnonymousResult: ${executeAnonymousResult}&#10;" />
+        </sequential>
+    </macrodef>
+
+    <macrodef name="login" description="Login to salesforce and populate serverUrl / sessionId / instance">
+        <attribute name="username" description="Salesforce user name."/>
+        <attribute name="password" description="Salesforce password."/>
+        <attribute name="serverurl" description="Salesforce endpoint."/>
+        <sequential>
+            <!-- Obtain Session Id via Login SOAP service -->
+            <ml:http url="@{serverurl}/services/Soap/c/51.0" method="POST" failonunexpected="false" outfile="lib/loginResult.xml" statusProperty="loginResponseStatus">
+                <headers>
+                    <header name="Content-Type" value="text/xml"/>
+                    <header name="SOAPAction" value="login"/>
+                </headers>
+                <entity><![CDATA[
+                     <env:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:env='http://schemas.xmlsoap.org/soap/envelope/'>
+                         <env:Body>
+                             <sf:login xmlns:sf='urn:enterprise.soap.sforce.com'>
+                                 <sf:username>@{username}</sf:username>
+                                 <sf:password>@{password}</sf:password>
+                             </sf:login>
+                         </env:Body>
+                     </env:Envelope>]]>
+                </entity>
+            </ml:http>
+
+            <!-- Fail on error -->
+            <loadfile property="loginResult" srcFile="lib/loginResult.xml" />
+            <fail message="Login failed: ${loginResult}">
+                <condition>
+                    <resourcecontains resource="lib/loginResult.xml" substring="faultcode" />
+                </condition>
+            </fail>
+
+            <!-- Parse response into properties -->
+            <xmlproperty file="lib/loginResult.xml" />
+            <echo file="lib/serverUrl.txt" message="${soapenv:Envelope.soapenv:Body.loginResponse.result.serverUrl}" />
+            <echo file="lib/sessionId.txt" message="${soapenv:Envelope.soapenv:Body.loginResponse.result.sessionId}" />
+            <echo file="lib/instance.txt" message="${soapenv:Envelope.soapenv:Body.loginResponse.result.serverUrl}" />
+            <replaceregexp file="lib/instance.txt" match="(https://[^/]+)/.*" replace="\1" />
+            <loadfile property="sessionId" srcFile="lib/sessionId.txt" />
+            <loadfile property="instance" srcFile="lib/instance.txt" />
+        </sequential>
+    </macrodef>
+
+</project>

@@ -1,0 +1,18 @@
+clone:
+  depth: full
+
+pipelines:
+  custom:
+    deploy:
+      - step:
+          script:
+            - ant -buildfile build/build.xml deploy -Dsf.username=$SF_USERNAME -Dsf.password=$SF_PASSWORD -Dsf.token=$SF_TOKEN -Dsf.serverurl=$SF_SERVERURL
+    deploy-test:
+      - step:
+          script:
+            - ant -buildfile build/build.xml deploy-test -Dsf.username=$SF_USERNAME -Dsf.password=$SF_PASSWORD -Dsf.token=$SF_TOKEN -Dsf.serverurl=$SF_SERVERURL
+   branches:  # Pipelines that run automatically on a commit to a branch
+    webServiceFramework:
+      - step:
+          script:
+            - echo "webServiceFramework deploy"

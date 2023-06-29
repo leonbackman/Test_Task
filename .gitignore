@@ -1,0 +1,18 @@
+config/
+dev.sublime-project
+qa.sublime-project
+.project
+.settings/com.salesforce.ide.core.prefs
+salesforce.schema
+allcloud.sublime-project
+manual_build/
+ All-in-one Customer Support System/
+Referenced Packages/
+.idea/
+Twist Dev.sublime-project
+Twist Dev.sublime-workspace
+debug/
+IlluminatedCloud/
+/ant-salesforce.jar
+/ml-ant-http-1.1.3.jar
+/SFDC-Production.iml
