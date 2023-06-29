@@ -1,8 +1,6 @@
 @isTest
 public class ObjectListSorterTest {
     
-    //system.assertEquals(expected, actual, msg)
-    
     @istest
     static void standardSortIntegerTest() {
         List<Integer> testList = new List<Integer>{3,6,9,2,1,5,4,7,8};

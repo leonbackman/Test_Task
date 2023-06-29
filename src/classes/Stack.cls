@@ -78,15 +78,11 @@ public class Stack {
         Object objtoPop;
         
         if(this.isOrdered) {
-            system.debug('in firsrt if');
-            system.debug('this.orderedList ' + this.orderedList);
             objtoPop = this.orderedList.remove(this.orderedList.size() - 1);
             this.objList.clear();
             this.objList.addAll(orderedList);
         } else if(!isQuick) {
-            system.debug('in second if');
             sort();
-            system.debug('this.orderedList 1 ' + this.orderedList);
             if(!this.orderedList.isEmpty()) {
                 objtoPop = this.orderedList.remove(this.orderedList.size() - 1);
                 this.objList.clear();
@@ -94,14 +90,11 @@ public class Stack {
             } else {
                 objtoPop = this.objList.remove(size() - 1);
             }
-            system.debug('this.orderedList 2 ' + this.orderedList);
         } else {
-            system.debug('in else');
             objtoPop = this.objList.remove(size() - 1);
             this.isOrdered = false;
         }
         
-        system.debug('objtoPop ' + objtoPop);
         return objtoPop;
     }
     
@@ -132,15 +125,6 @@ public class Stack {
             this.objList.addAll(this.orderedList);
         }
     }
-   
-    /*
-    public Object peek() {
-        if (isEmpty()) {
-            throw new StackUnderflowException();
-        }
-        
-        return this.objList.get(size() - 1);
-    } */
 
 	public class StackUnderflowException extends Exception {}
 }
