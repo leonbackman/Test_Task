@@ -1,0 +1,24 @@
+trigger OpportunityTrigger on Opportunity (after delete, after insert, after undelete, after update, before delete, before insert, before update) {
+    
+    private OpportunityHandler handler = new OpportunityHandler();
+
+    if(Trigger.isBefore){
+        if(Trigger.isInsert){
+
+        } else if(Trigger.isUpdate){
+
+        } else if(Trigger.isDelete){
+
+        }
+    } else {
+        if(Trigger.isInsert){
+
+        } else if(Trigger.isUpdate){
+            handler.checkPODatesResync(Trigger.oldMap, Trigger.newMap);
+        } else if(Trigger.isDelete){
+            handler.rollUpTPUBToPo(Trigger.old);
+        } else if(Trigger.isUndelete){
+
+        }
+    }
+}
