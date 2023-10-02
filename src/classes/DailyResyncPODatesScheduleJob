@@ -1,0 +1,9 @@
+global class DailyResyncPODatesScheduleJob implements Schedulable {
+    global void execute(SchedulableContext ctx){
+        ResyncPODatesDailyBatch resyncAccPODatesBatch = new ResyncPODatesDailyBatch('Account', true);
+        database.executeBatch(resyncAccPODatesBatch);
+        
+        ResyncPODatesDailyBatch resyncContPODatesBatch = new ResyncPODatesDailyBatch('Contact', true);
+        database.executeBatch(resyncContPODatesBatch);
+    }
+}
