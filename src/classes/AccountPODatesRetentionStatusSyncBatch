@@ -1,0 +1,127 @@
+/**
+* SFDC-2540 : Batch to populate and order first and latest PO dates for account sub accounts
+* Author    : Leonid Backman
+* @since    : 04/10/2021
+*/
+global with sharing class AccountPODatesRetentionStatusSyncBatch implements Database.Batchable<sObject>, schedulable, Database.Stateful {
+    Map<Id, Date> parentAccToLatestOrderDateMap = new Map<Id, Date>();
+    Map<Id, Date> parentAccToFirstOrderDateMap = new Map<Id, Date>();
+    Set<Id> allParentAccIdSet = new Set<Id>();
+
+    global Database.QueryLocator start(Database.BatchableContext bc) {
+        return Database.getQueryLocator(
+                'SELECT Id, First_PO_Date__c, First_PO_Date_Incl_Sub_Accounts__c, ' +
+                        'Latest_PO_Date__c, Latest_PO_Date_Incl_Sub_Accounts__c, ' +
+                        'Retention_Status__c, Retention_Status_Incl_Sub_Accounts__c, ' +
+                        'ParentId, Parent.First_PO_Date__c, Parent.First_PO_Date_Incl_Sub_Accounts__c, ' +
+                        'Parent.Latest_PO_Date__c, Parent.Latest_PO_Date_Incl_Sub_Accounts__c,' +
+                        'Parent.Retention_Status__c, Parent.Retention_Status_Incl_Sub_Accounts__c, ' +
+                        'Parent.ParentId, Parent.Parent.First_PO_Date__c, Parent.Parent.First_PO_Date_Incl_Sub_Accounts__c, ' +
+                        'Parent.Parent.Latest_PO_Date__c, Parent.Parent.Latest_PO_Date_Incl_Sub_Accounts__c,' +
+                        'Parent.Parent.Retention_Status__c, Parent.Parent.Retention_Status_Incl_Sub_Accounts__c, ' +
+                        'Parent.Parent.ParentId, Parent.Parent.Parent.First_PO_Date__c, Parent.Parent.Parent.First_PO_Date_Incl_Sub_Accounts__c, ' +
+                        'Parent.Parent.Parent.Latest_PO_Date__c, Parent.Parent.Parent.Latest_PO_Date_Incl_Sub_Accounts__c, '+
+                        'Parent.Parent.Parent.Retention_Status__c, Parent.Parent.Parent.Retention_Status_Incl_Sub_Accounts__c ' +
+                        'FROM Account ' +
+                        'ORDER BY Parent_Depth_Level__c DESC');
+    }
+
+    global void execute(Database.BatchableContext bc, List<Account> scope){
+        for(Account acc : scope) {
+            populateAccountPODates(acc);
+            AccountRetentionStatusInteractor.execute(acc);
+        }
+        
+        update scope;
+    }
+
+    global void finish(Database.BatchableContext bc) {}
+
+    global void execute(SchedulableContext SC) {
+        Database.executeBatch(new AccountPODatesRetentionStatusSyncBatch());
+    }
+
+    /**
+     * SFDC-2540	: Populate PO dates of parent and sub accounts
+     * Author		: Leonid Backman
+     *
+     * @method      : populateAccountPODates
+     * @since       : 07/03/2020
+     *
+     * @param	{List<Account>} : batch scope
+     */
+    private void populateAccountPODates(Account acc) {
+        Date accLatestOrderDate = acc.Latest_PO_Date__c;
+        Date accFirstOrderDate = acc.First_PO_Date__c;
+
+        acc.Latest_PO_Date_Incl_Sub_Accounts__c = null;
+        acc.First_PO_Date_Incl_Sub_Accounts__c = null;
+
+        if(allParentAccIdSet.contains(acc.Id)) {
+            acc.Latest_PO_Date_Incl_Sub_Accounts__c = accLatestOrderDate;
+            acc.First_PO_Date_Incl_Sub_Accounts__c = accFirstOrderDate;
+
+            if(parentAccToLatestOrderDateMap.containsKey(acc.Id)) {
+                accLatestOrderDate = parentAccToLatestOrderDateMap.get(acc.Id);
+                acc.Latest_PO_Date_Incl_Sub_Accounts__c = accLatestOrderDate;
+            }
+
+            if(parentAccToFirstOrderDateMap.containsKey(acc.Id)) {
+                accFirstOrderDate = parentAccToFirstOrderDateMap.get(acc.Id);
+                acc.First_PO_Date_Incl_Sub_Accounts__c = accFirstOrderDate;
+            }
+        }
+
+        if (acc.ParentId != null) {
+            mapParentAccToChildOrderDate(acc.Parent, accLatestOrderDate, accFirstOrderDate);
+
+            if (acc.Parent.ParentId != null) {
+                mapParentAccToChildOrderDate(acc.Parent.Parent, accLatestOrderDate, accFirstOrderDate);
+
+                if (acc.Parent.Parent.ParentId != null) {
+                    mapParentAccToChildOrderDate(acc.Parent.Parent.Parent, accLatestOrderDate, accFirstOrderDate);
+                }
+            }
+        }
+    }
+
+    /**
+     * SFDC-2540	: Populates maps from parent account to child po dates
+     * Author		: Leonid Backman
+     *
+     * @method      : mapParentAccToChildOrderDate
+     * @since       : 07/03/2021
+     *
+     * @param	{Account}   : parentAcc
+     * @param	{Date}      : childAccLastOrderDate
+     * @param	{Date}      : childAccFirstOrderDate
+     */
+    private void mapParentAccToChildOrderDate(Account parentAcc, Date childAccLastOrderDate, Date childAccFirstOrderDate) {
+        allParentAccIdSet.add(parentAcc.Id);
+        if(childAccLastOrderDate != null) {
+            if(!parentAccToLatestOrderDateMap.containsKey(parentAcc.Id)) {
+
+                if(parentAcc.Latest_PO_Date__c != null && parentAcc.Latest_PO_Date__c > childAccLastOrderDate) {
+                    parentAccToLatestOrderDateMap.put(parentAcc.Id, parentAcc.Latest_PO_Date__c);
+                } else {
+                    parentAccToLatestOrderDateMap.put(parentAcc.Id, childAccLastOrderDate);
+                }
+
+            } else if(childAccLastOrderDate > parentAccToLatestOrderDateMap.get(parentAcc.Id)) {
+                parentAccToLatestOrderDateMap.put(parentAcc.Id, childAccLastOrderDate);
+            }
+
+            if(!parentAccToFirstOrderDateMap.containsKey(parentAcc.Id)) {
+
+                if(parentAcc.First_PO_Date__c != null && parentAcc.First_PO_Date__c < childAccFirstOrderDate) {
+                    parentAccToFirstOrderDateMap.put(parentAcc.Id, parentAcc.First_PO_Date__c);
+                } else {
+                    parentAccToFirstOrderDateMap.put(parentAcc.Id, childAccFirstOrderDate);
+                }
+
+            } else if(childAccFirstOrderDate < parentAccToFirstOrderDateMap.get(parentAcc.Id)) {
+                parentAccToFirstOrderDateMap.put(parentAcc.Id, childAccFirstOrderDate);
+            }
+        }
+    }
+}
