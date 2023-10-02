@@ -1,0 +1,49 @@
+public class AccountRetentionStatusInteractor {
+    
+    public static void execute(Account acc) {
+        populateAccountRetentionStatus(acc);
+    }
+    
+    /**
+     * SFDC-2241	: Populate retention status for account with no parent and popiulate parent account map
+     * Author		: Leonid Backman
+     *
+     * @method		: populateAccountRetentionStatus
+     * @since		: 13/10/2020
+     *
+     * @param   {Account} : account
+     */
+    private static void populateAccountRetentionStatus(Account acc) {
+        acc.Retention_Status__c = getRetentionStatus(acc.Latest_PO_Date__c, acc.Retention_Status__c);
+
+        if(acc.Latest_PO_Date_Incl_Sub_Accounts__c != null) {
+            acc.Retention_Status_Incl_Sub_Accounts__c = getRetentionStatus(acc.Latest_PO_Date_Incl_Sub_Accounts__c, acc.Retention_Status_Incl_Sub_Accounts__c);
+        }
+    }
+    
+    /**
+     * SFDC-2241	: Get updated account retention status based on account last order date and previous retention status
+     * Author		: Leonid Backman
+     *
+     * @method		: getRetentionStatus
+     * @since		: 13/10/2020
+     *
+     * @param	{Date}    : accLastOrderDate
+     * @param	{String}  : retentionStatusFieldName
+     *
+     * @return {String} : retentionStatus
+     */
+    private static String getRetentionStatus(Date accLastOrderDate, String previousRetentionStatus) {
+        String retentionStatus = previousRetentionStatus;
+
+        if(accLastOrderDate > Date.today().addMonths(-6)) {
+            retentionStatus = retentionStatus == 'Lost' ? 'Won back' : 'Active';
+        } else if(accLastOrderDate <= Date.today().addMonths(-12)) {
+            retentionStatus = 'Lost';
+        } else if(accLastOrderDate <= Date.today().addMonths(-6)) {
+            retentionStatus = 'At-risk';
+        }
+
+        return retentionStatus;
+    }
+}
