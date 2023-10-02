@@ -1,0 +1,39 @@
+/**
+ * Created by Nbenyechiel on 30/12/2018.
+ */
+
+    /**
+     * SFDC-3084    : Check Account and Contact for PO dates resync batch
+     * Author       : Leonid Backman
+     *
+     * @method      : checkPODatesResync
+     * @since       : 1/03/2020
+     *
+     * @param   {Map<Id,Opportunity>}   : Trigger old map
+     * @param   {Map<Id,Opportunity>}   : Trigger new map
+     */
+    public List<sObject> checkPODatesResync(List<Opportunity> changedOppList) {
+        Map<Id, sObject> objToPoDateResyncMap = new Map<Id, sObject>();
+        List<Account> accToPoDateResyncList = new List<Account>();
+        List<Contact> contToPoDateResyncList = new List<Contact>();
+
+        for(Opportunity opp : changedOppList) {
+            if(this.RESYNC_PO_OPP_RELEVANT_STAGE_NAME_SET.contains(opp.StageName) &&
+                    opp.Blanket_PO__c != TwistConstants.OPPORTUNITY_PAYMENT_METHOD_BPO_OPPTY) { //SFDC-4305
+
+                if(opp.AccountId != null) {
+                    accToPoDateResyncList.add(new Account(Id = opp.AccountId, Resync_PO_Dates__c = true));
+                }
+
+                if(opp.Contact__c != null) {
+                    contToPoDateResyncList.add(new Contact(Id = opp.Contact__c, Resync_PO_Dates__c = true));
+                }
+            }
+        }
+        
+        objToPoDateResyncMap.putAll(accToPoDateResyncList);
+        objToPoDateResyncMap.putAll(contToPoDateResyncList);
+
+        return objToPoDateResyncMap.values();
+    }
+}
