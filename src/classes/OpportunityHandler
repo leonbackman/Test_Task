@@ -1,0 +1,25 @@
+public class OpportunityHandler {
+
+    private OpportunityManager manager = new OpportunityManager();
+    private hlp_triggerChange isChange;
+
+    public OpportunityHandler() {
+        this.isChange = new hlp_triggerChange(Trigger.oldMap, Trigger.newMap);
+    }
+
+    /**
+     * SFDC-3084    : Check Account and Contact for PO dates resync batch
+     * Author       : Leonid Backman
+     *
+     * @method      : checkPODatesResync
+     * @event       : After update
+     * @since       : 1/03/2020
+     *
+     * @param   {Map<Id,Opportunity>}   : Trigger old map
+     * @param   {Map<Id,Opportunity>}   : Trigger new map
+     */
+    public void checkPODatesResync(Map<Id,Opportunity> oldMap, Map<Id,Opportunity> newMap) {
+        List<Opportunity> changedOppList = this.isChange.getChangedRecordsList(new Set<String>{'StageName', 'AccountId', 'PO_Date__c'});
+        update manager.checkPODatesResync(changedOppList);
+    }
+}
