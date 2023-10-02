@@ -1,0 +1,90 @@
+/**
+* SFDC-3084 : Daily batch to update Account/Contact PO dates for records checked to resync
+* Author    : Leonid Backman
+* @since    : 04/03/2021
+*/
+global class ResyncPODatesDailyBatch implements Database.Batchable<sObject>, schedulable {
+    Set<String> OPP_RELEVANT_STAGE_NAME_SET = new Set<String>{
+            TwistConstants.OPPORTUNITY_STAGENAME_RECEIVED_PAYMENT_METHOD,
+            TwistConstants.OPPORTUNITY_STAGENAME_CLOSED_WON
+    };
+    String objReferenceFieldName = 'AccountId';
+    String queryString = 'SELECT Id FROM OBJECT_NAME ';
+    String bpoOpptyValue = TwistConstants.OPPORTUNITY_PAYMENT_METHOD_BPO_OPPTY;
+    
+    String aggregateQueryString = 'SELECT OBJ_REF_FIELD_NAME objId, MIN(PO_Date__c) firstPoDate, MAX(PO_Date__c) LatestPoDate ' +
+                                    'FROM Opportunity ' +
+                                    'WHERE OBJ_REF_FIELD_NAME IN :sObjList ' +
+                                    'AND Blanket_PO__c != :bpoOpptyValue ' + //SFDC-4305
+                                    'AND PO_Date__c != null ' +
+                                    'AND StageName IN :OPP_RELEVANT_STAGE_NAME_SET ' +
+                                    'GROUP BY OBJ_REF_FIELD_NAME';
+
+    global ResyncPODatesDailyBatch(String objName, Boolean byReSyncPODates) {
+        this.queryString = this.queryString.replace('OBJECT_NAME', objName);
+        if(byReSyncPODates) this.queryString += 'WHERE Resync_PO_Dates__c = true';
+
+        if(objName == 'Contact') {
+            this.objReferenceFieldName = 'Contact__c';
+        }
+        
+        this.aggregateQueryString = this.aggregateQueryString.replaceAll('OBJ_REF_FIELD_NAME', this.objReferenceFieldName);
+    }
+
+    global Database.QueryLocator start(Database.BatchableContext bc) {
+        return Database.getQueryLocator(this.queryString);
+    }
+
+    global void execute(Database.BatchableContext bc, List<sObject> scope){
+        updatePODates(scope);
+        update scope;
+    }
+
+    global void finish(Database.BatchableContext bc) {}
+
+    global void execute(SchedulableContext SC) {}
+
+    /**
+     * SFDC-3084	: Update PO dates for Account/Contact based on related opportunities PO date
+     * Author		: Leonid Backman
+     *
+     * @method		: updatePODates
+     * @since		: 04/03/2021
+     *
+     * @param {List<sObject>} : batch scope
+     */
+    private void updatePODates(List<sObject> sObjList) {
+        Map<Id, sObject> sObjMap = new Map<Id, sObject>(sObjList);
+        List<AggregateResult> agrResultList = Database.query(this.aggregateQueryString);
+        Id sObjId;
+        
+        for(AggregateResult ar : agrResultList) {
+            sObjId = (Id)ar.get('objId');
+			populateObjFields(sObjMap.get(sObjId), (Date)ar.get('firstPoDate'), (Date)ar.get('latestPoDate'));
+            
+            sObjMap.keySet().remove(sObjId);
+        }
+        
+        //To reset values in case object has no related opportunities so there is no aggregate results
+        for(sObject obj : sObjMap.values()) {
+			populateObjFields(obj, null, null); 
+        }
+    }
+
+    /**
+     * SFDC-3084	: Update PO dates for Account/Contact
+     * Author		: Leonid Backman
+     *
+     * @method		: populateObjFields
+     * @since		: 04/03/2021
+     *
+     * @param {sObject} : Account/Contact
+     * @param {Date} : firstPoDate
+     * @param {Date} : latestPoDate
+     */
+    private void populateObjFields(sObject obj, Date firstPoDate, Date latestPoDate) {
+        obj.put('Resync_PO_Dates__c', false);
+        obj.put('First_PO_Date__c', firstPoDate);
+        obj.put('Latest_PO_Date__c', latestPoDate);
+    }
+}
